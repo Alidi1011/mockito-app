@@ -190,10 +190,51 @@ class ExamenServiceImplTest {
 
     assertThrows(IllegalArgumentException.class, () -> {
       service.guardar(examen);
-      
+
     });
+  }
 
+  @Test
+  void testDoAnswer(){
+    when(examenRepository.findAll()).thenReturn(Datos.EXAMENES);
+    //when(preguntaRepository.findPreguntasPorExamenId(anyLong())).thenReturn(Datos.PREGUNTAS);
+    doAnswer(invocation -> {
+      Long id = invocation.getArgument(0);
+      return id == 5L? Datos.PREGUNTAS: null;
+    }).when(preguntaRepository).findPreguntasPorExamenId(anyLong());
 
+    Examen examen = service.findExamenPorNombreConPreguntas("Matemáticas");
+    assertEquals(5L, examen.getId());
+    assertTrue(examen.getPreguntas().contains("geometria"));
+    assertEquals("Matemáticas", examen.getNombre());
+    assertEquals(5, examen.getPreguntas().size());
+  }
+
+  @Test
+  void testDoAnswerGuardarExamen(){
+    //Given
+    Examen newExamen = Datos.EXAMEN;
+    newExamen.setPreguntas(Datos.PREGUNTAS);
+    doAnswer(new Answer<Examen>(){
+      Long secuencia = 8L;
+
+      @Override
+      public Examen answer(InvocationOnMock invocation) throws Throwable {
+        Examen examen = invocation.getArgument(0);
+        examen.setId(secuencia++);
+        return examen;
+      }
+    }).when(examenRepository).guardar(any(Examen.class));
+
+    //When
+    Examen examen = service.guardar(newExamen);
+    //then
+    assertNotNull(examen.getId());
+    assertEquals(8L, examen.getId());
+    assertEquals("Física", examen.getNombre());
+
+    verify(examenRepository).guardar(any(Examen.class));
+    verify(preguntaRepository).guardarVarias(anyList());
   }
 
 
