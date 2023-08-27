@@ -190,8 +190,6 @@ class ExamenServiceImplTest {
 
     assertThrows(IllegalArgumentException.class, () -> {
       service.guardar(examen);
-
-      
     });
 
 
