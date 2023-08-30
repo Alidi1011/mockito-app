@@ -1,4 +1,4 @@
-package org.arteaga.mockitoapp.ejemplos.services;
+package org.arteaga.mockitoapp.ejemplos;
 
 import org.arteaga.mockitoapp.ejemplos.models.Examen;
 

@@ -1,20 +1,25 @@
 package org.arteaga.mockitoapp.ejemplos.services;
 
+import org.arteaga.mockitoapp.ejemplos.Datos;
 import org.arteaga.mockitoapp.ejemplos.models.Examen;
 import org.arteaga.mockitoapp.ejemplos.repositories.ExamenRepository;
+import org.arteaga.mockitoapp.ejemplos.repositories.ExamenRepositoryImpl;
 import org.arteaga.mockitoapp.ejemplos.repositories.PreguntaRepository;
+import org.arteaga.mockitoapp.ejemplos.repositories.PreguntaRepositoryImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatcher;
 import org.mockito.Captor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.stubbing.Answer;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -25,9 +30,9 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class ExamenServiceImplTest {
   @Mock
-  ExamenRepository examenRepository;
+  ExamenRepositoryImpl examenRepository;
   @Mock
-  PreguntaRepository preguntaRepository;
+  PreguntaRepositoryImpl preguntaRepository;
   @InjectMocks
   ExamenServiceImpl service;
 
@@ -237,5 +242,82 @@ class ExamenServiceImplTest {
     verify(preguntaRepository).guardarVarias(anyList());
   }
 
+
+  @Test
+  void testDoCallRealMethod(){
+    when(examenRepository.findAll()).thenReturn(Datos.EXAMENES);
+    //when(preguntaRepository.findPreguntasPorExamenId(anyLong())).thenReturn(Datos.PREGUNTAS);
+
+    doCallRealMethod().when(preguntaRepository).findPreguntasPorExamenId(anyLong());
+    Examen examen = service.findExamenPorNombreConPreguntas("Matemáticas");
+
+    assertEquals(5L, examen.getId());
+    assertEquals("Matemáticas", examen.getNombre());
+  }
+
+  @Test
+  void testSpy(){
+    ExamenRepository examenRepository = spy(ExamenRepositoryImpl.class);
+    PreguntaRepository preguntaRepository = spy(PreguntaRepositoryImpl.class);
+    ExamenService examenService = new ExamenServiceImpl(examenRepository, preguntaRepository);
+
+    List<String> preguntas = Arrays.asList("aritmética");
+    //doReturn(preguntas).when(preguntaRepository).findPreguntasPorExamenId(anyLong());
+    when(preguntaRepository.findPreguntasPorExamenId(anyLong())).thenReturn(preguntas);
+
+    Examen examen = examenService.findExamenPorNombreConPreguntas("Matemáticas");
+
+    assertEquals(5, examen.getId());
+    assertEquals("Matemáticas", examen.getNombre());
+    assertEquals(1, examen.getPreguntas().size());
+    assertTrue(examen.getPreguntas().contains("aritmética"));
+
+    verify(examenRepository).findAll();
+    verify(preguntaRepository).findPreguntasPorExamenId(anyLong());
+  }
+
+  @Test
+  void testOrdenDeInvocaciones(){
+    when(examenRepository.findAll()).thenReturn(Datos.EXAMENES);
+
+    service.findExamenPorNombreConPreguntas("Matemáticas");
+    service.findExamenPorNombreConPreguntas("Lenguaje");
+
+    InOrder inOrder = inOrder(examenRepository, preguntaRepository);
+    inOrder.verify(examenRepository).findAll();
+    inOrder.verify(preguntaRepository).findPreguntasPorExamenId(5L);
+    inOrder.verify(examenRepository).findAll();
+    inOrder.verify(preguntaRepository).findPreguntasPorExamenId(6L);
+
+
+  }
+
+  @Test
+  void testNumeroDeInvocaciones(){
+    when(examenRepository.findAll()).thenReturn(Datos.EXAMENES);
+    service.findExamenPorNombreConPreguntas("Matemáticas");
+
+    verify(preguntaRepository, times(1)).findPreguntasPorExamenId(5L);
+    verify(preguntaRepository, atLeast(1)).findPreguntasPorExamenId(5L);
+    verify(preguntaRepository, atLeastOnce()).findPreguntasPorExamenId(5L);
+    verify(preguntaRepository, atMostOnce()).findPreguntasPorExamenId(5L);
+
+  }
+
+  @Test
+  void testNumeroDeInvocaciones2(){
+    when(examenRepository.findAll()).thenReturn(Collections.emptyList());
+    service.findExamenPorNombreConPreguntas("Matemáticas");
+
+    verify(preguntaRepository, never()).findPreguntasPorExamenId(5L);
+    verifyNoInteractions(preguntaRepository);
+
+    verify(examenRepository).findAll();
+    verify(examenRepository, times(1)).findAll();
+    verify(examenRepository, atLeast(1)).findAll();
+    verify(examenRepository, atMost(10)).findAll();
+    verify(examenRepository, atMostOnce()).findAll();
+
+  }
 
 }
